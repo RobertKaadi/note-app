@@ -29,9 +29,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import io.garrit.android.demo.tododemo.ui.theme.TodoDemoTheme
 import java.util.UUID
 
-data class Task(
+data class Note(
     val id: String = UUID.randomUUID().toString(),
-    val title: String,
+    var title: String,
+    var text: String = "",
     var isChecked: MutableState<Boolean> = mutableStateOf(false)
 )
 
@@ -39,17 +40,50 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val list = remember {
-                mutableStateListOf(Task(title = "Hello"), Task(title = "World"))
-            }
+            val notes = remember { mutableStateListOf<Note>() }
+            var selectedNote by remember { mutableStateOf<Note?>(null) }
+            var screen by remember { mutableStateOf("MainScreen") }
 
             TodoDemoTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen(list = list)
+                    when (screen) {
+                        "MainScreen" -> MainScreen(
+                            list = notes,
+                            onNoteClick = {
+                                selectedNote = it
+                                screen = "DetailScreen"
+                            },
+                            onAddNote = {
+                                selectedNote = null
+                                screen = "EditScreen"
+                            }
+                        )
+                        "DetailScreen" -> selectedNote?.let { note ->
+                            NoteDetailScreen(
+                                note = note,
+                                onEdit = { screen = "EditScreen" },
+                                onDelete = {
+                                    notes.remove(note)
+                                    screen = "MainScreen"
+                                }
+                            )
+                        }
+                        "EditScreen" -> EditNoteScreen(
+                            note = selectedNote,
+                            onSave = { note ->
+                                if (selectedNote == null) {
+                                    notes.add(note)
+                                } else {
+                                    notes[notes.indexOf(selectedNote)] = note
+                                }
+                                screen = "MainScreen"
+                            },
+                            onCancel = { screen = "MainScreen" }
+                        )
+                    }
                 }
             }
         }
@@ -57,7 +91,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainScreen(list: MutableList<Task>, modifier: Modifier = Modifier) {
+fun MainScreen(list: MutableList<Note>, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -68,7 +102,7 @@ fun MainScreen(list: MutableList<Task>, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun TextInputView(list: MutableList<Task>) {
+fun TextInputView(list: MutableList<Note>) {
     var text by rememberSaveable {
         mutableStateOf("")
     }
@@ -80,7 +114,7 @@ fun TextInputView(list: MutableList<Task>) {
             text = it
         })
         Button(onClick = { 
-            list.add(Task(title = text))
+            list.add(Note(title = text))
             text = ""
         }) {
             Text("Add")
@@ -89,7 +123,7 @@ fun TextInputView(list: MutableList<Task>) {
 }
 
 @Composable
-fun ListView(list: List<Task>) {
+fun ListView(list: List<Note>) {
     LazyColumn {
         items(list) { task ->
             RowView(task)
@@ -98,7 +132,7 @@ fun ListView(list: List<Task>) {
 }
 
 @Composable
-fun RowView(task: Task) {
+fun RowView(task: Note) {
     Row(
         modifier = Modifier
             .fillMaxWidth(),
@@ -118,6 +152,6 @@ fun RowView(task: Task) {
 @Composable
 fun RowViewPreview() {
     TodoDemoTheme {
-        RowView(Task(title = "Hello"))
+        RowView(Note(title = "Hello"))
     }
 }
