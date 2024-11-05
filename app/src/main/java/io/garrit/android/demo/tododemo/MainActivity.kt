@@ -91,46 +91,112 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainScreen(list: MutableList<Note>, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-    ) {
-        TextInputView(list = list)
-        ListView(list = list)
-    }
-}
+fun MainScreen(list: MutableList<Note>, onNoteClick: (Note) -> Unit, onAddNote: () -> Unit) {
+    val checkedNotes = list.filter { it.isChecked.value }
 
-@Composable
-fun TextInputView(list: MutableList<Note>) {
-    var text by rememberSaveable {
-        mutableStateOf("")
-    }
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Text(
+            text = "Notes",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
 
-    Row(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        OutlinedTextField(value = text, onValueChange = {
-            text = it
-        })
-        Button(onClick = { 
-            list.add(Note(title = text))
-            text = ""
-        }) {
-            Text("Add")
+        // Show "Delete Selected" button if any notes are checked
+        if (checkedNotes.isNotEmpty()) {
+            Button(
+                onClick = {
+                    list.removeAll(checkedNotes) // Remove all checked notes from the list
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Delete Selected (${checkedNotes.size})")
+            }
+        }
+
+        Button(
+            onClick = onAddNote,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            Text("Add Note")
+        }
+
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(list) { note ->
+                ListItem(note = note, onClick = { onNoteClick(note) })
+            }
         }
     }
 }
 
 @Composable
-fun ListView(list: List<Note>) {
-    LazyColumn {
-        items(list) { task ->
-            RowView(task)
+fun ListItem(note: Note, onClick: () -> Unit) {
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 4.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = note.isChecked.value,
+                onCheckedChange = { note.isChecked.value = !note.isChecked.value },
+                colors = CheckboxDefaults.colors(MaterialTheme.colorScheme.primary)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(
+                    text = note.title,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = note.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
         }
     }
 }
 
+@Composable
+fun NoteDetailScreen(note: Note, onEdit: () -> Unit, onDelete: () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Text(
+            text = "Title: ${note.title}",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Content: ${note.text}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(onClick = onEdit, modifier = Modifier.fillMaxWidth()) {
+            Text("Edit")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(onClick = onDelete, colors = ButtonDefaults.buttonColors(MaterialTheme.colorScheme.error)) {
+            Text("Delete")
+        }
+    }
+}
 @Composable
 fun RowView(task: Note) {
     Row(
